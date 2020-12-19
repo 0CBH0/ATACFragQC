@@ -23,4 +23,4 @@ ATACFragQC -h
 * Other feature would be supported in the future ...
 
 ## Overview
-![Overview of ATACFragQC](https://raw.githubusercontent.com/0CBH0/ATACFragQC/mian/Images/MCBULK_qc.png)
+![Overview of ATACFragQC](https://raw.githubusercontent.com/0CBH0/ATACFragQC/main/Images/MCBULK_qc.png)
