@@ -1,0 +1,10 @@
+setuptools
+numpy
+pandas
+pysam
+regex
+scipy
+matplotlib
+plotnine
+Pillow
+python>=3.6
