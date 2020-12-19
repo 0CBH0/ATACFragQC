@@ -1,7 +1,10 @@
 '''Setup script for ATACFragQC'''
 
+from __future__ import absolute_import
+
 import os.path
 from setuptools import setup
+from ATACFragQC import __version__
 
 # The directory containing this file
 HERE = os.path.abspath(os.path.dirname(__file__))
@@ -13,7 +16,7 @@ with open(os.path.join(HERE, 'README.md')) as fid:
 # This call to setup() does all the work
 setup(
     name='ATACFragQC',
-    version='0.0.1',
+    version=__version__,
     description='Fragment Quality Control for ATAC-seq',
     long_description=README,
     long_description_content_type='text/markdown',

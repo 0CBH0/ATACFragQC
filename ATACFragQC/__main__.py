@@ -4,9 +4,22 @@ import numpy as np
 from plotnine import *
 from PIL import Image
 
-def bedScan(file_bam, file_ref):
+class ArgumentList:
+    file_bam = ''
+    file_ref = ''
+    file_out = False
+    quality = 50
+    isize = 147
+    def __init__(self):
+        self.file_bam = ''
+        self.file_ref = ''
+        file_out = False
+        self.quality = 50
+        self.isize = 147
+
+def bedScan(args):
     print("Processing the reference...")
-    ref = pd.read_table(file_ref, comment='#', header=None)
+    ref = pd.read_table(args.file_ref, comment='#', header=None)
     ref.columns = ['seq_id', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
     ref = ref[(ref['type'] == 'transcript') & (ref['strand'] != '-') & ref['attributes'].str.match('.*gene_type \"protein_coding\".*') & ref['seq_id'].str.match('chr[0-9XY]+')]
     ref = ref[['seq_id', 'strand', 'start', 'end']].sort_values(by=['seq_id', 'start', 'strand'])
@@ -15,7 +28,7 @@ def bedScan(file_bam, file_ref):
     ref.loc[ref['strand'] == '+', 'end'] = ref.loc[ref['strand'] == '+', 'start'] + 2000
     ref.index = list(range(ref.index.size))
     
-    fs = pysam.AlignmentFile(file_bam, "rb")
+    fs = pysam.AlignmentFile(args.file_bam, "rb")
     print("Scaning the distribution of fragments...")
     chr_count = {}
     len_count = [0] * 501
@@ -24,7 +37,7 @@ def bedScan(file_bam, file_ref):
     for chr in chr_list:
         count = 0
         for read in fs.fetch(chr):
-            if read.flag == 99 and read.mapq > 50 and read.isize < 501:
+            if read.flag == 99 and read.mapq > args.quality and read.isize < 501:
                 len_count[read.isize] += 1
                 count += 1
         chr_count[chr] = count
@@ -42,7 +55,7 @@ def bedScan(file_bam, file_ref):
     for index, row in ref.iterrows():
         count = np.zeros(2001, dtype=np.int64)
         for frag in fs.fetch(row['seq_id'], row['start'], row['end']):
-            if frag.flag == 99 and frag.mapq > 50 and frag.isize < 147:
+            if frag.flag == 99 and frag.mapq > args.quality and frag.isize < args.isize:
                 count[range(max(0, frag.pos - row['start']), min(2001, frag.pos + frag.isize - row['start']))] += 1
         if sum(count) > 0:
             dist_count.append(count)
@@ -51,8 +64,8 @@ def bedScan(file_bam, file_ref):
     factors[factors == 0] = np.mean(factors)
     dist_count = pd.DataFrame({'V1': list(range(-900, 901)), 'V2': list(np.mean(dist_count[:, 100:1901] / factors.reshape(len(factors), 1), axis=0))})
     
-    print("Printing the results...")
-    (pathname, extension) = os.path.splitext(file_bam)
+    print("Saving the results...")
+    (pathname, extension) = os.path.splitext(args.file_bam)
     (filepath, filename) = os.path.split(pathname)
     ggsave(plot=ggplot(chr_count, aes(x='V1', y='V2'))+geom_bar(stat="identity", width=0.8, fill="#80B1D3")+
         labs(x="Chromosome", y="Fragments")+
@@ -82,24 +95,46 @@ def bedScan(file_bam, file_ref):
         img.close()
     result.save(pathname+'_qc.png')
     [os.remove(pathname+'.tmp'+str(i)+'.png') for i in range(3)]
+    if args.file_out:
+        chr_count.to_csv(pathname+'_chr.tsv', sep='\t', index=False, header=False)
+        len_count.to_csv(pathname+'_fl.tsv', sep='\t', index=False, header=False)
+        dist_count.to_csv(pathname+'_tss.tsv', sep='\t', index=False, header=False)
 
 def main():
-    opts, args = getopt.getopt(sys.argv[1:], 'hi:r:', ['input=', 'reference='])
-    file_bam = ''
-    file_ref = ''
+    opts, args = getopt.getopt(sys.argv[1:], 
+        'hoi:r:q:l:', 
+        ['help', 'output', 'input=', 'reference=', 'quality=', 'length='])
+    arguments = ArgumentList()
     help_flag = False
-    help_info = 'Usage:\nATACFragQC -i <input.bam> -r <reference.gtf>'
+    help_info = 'Usage:\nATACFragQC [options] -i <input.bam> -r <reference.gtf>\nArguments:\n'\
+        +'-i <file>\tA aligned & deduped BAM file\n'\
+        +'-f <file>\tGTF genome annotation\n'\
+        +'-o \t\tThe table of results would be saved if -o was set (default: False)\n'\
+        +'-q [1-255]\tThe quality limit of alignment (default: 50)\n'\
+        +'-l [50-500]\tThe length limit of nucleosome-free fragment (default: 147)\n'
     for opt, arg in opts:
-        if opt == '-h':
+        if opt in ('-h', '--help'):
             help_flag = True
         elif opt in ("-i", "--input"):
-            file_bam = arg
+            arguments.file_bam = arg
         elif opt in ("-r", "--reference"):
-            file_ref = arg
-    if help_flag or file_bam == '' or file_ref == '':
+            arguments.file_ref = arg
+        elif opt in ("-o", "--output"):
+            arguments.file_out = True
+        elif opt in ("-q", "--quality"):
+            if int(arg) >= 1 and int(arg) <= 255:
+                arguments.quality = int(arg)
+        elif opt in ("-l", "--length"):
+            if int(arg) >= 50 and int(arg) <= 500:
+                arguments.isize = int(arg)
+    if help_flag or arguments.file_bam == '' or arguments.file_ref == '':
         print(help_info)
         sys.exit()
-    bedScan(file_bam, file_ref)
+    bedScan(arguments)
 
 if __name__ == '__main__':
     main()
+    file_bam = ''
+    file_ref = ''
+    file_out = ''
+    quality = 0
