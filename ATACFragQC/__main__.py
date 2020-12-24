@@ -4,6 +4,8 @@ import numpy as np
 from plotnine import *
 from PIL import Image
 
+from __init__ import __version__
+
 class ArgumentList:
     file_bam = ''
     file_ref = ''
@@ -106,7 +108,8 @@ def main():
         ['help', 'output', 'input=', 'reference=', 'quality=', 'length='])
     arguments = ArgumentList()
     help_flag = False
-    help_info = 'Usage:\nATACFragQC [options] -i <input.bam> -r <reference.gtf>\nArguments:\n'\
+    help_info = 'ATACFragQC - Version: '+__version__+'\n'\
+        +'Usage:\nATACFragQC [options] -i <input.bam> -r <reference.gtf>\nArguments:\n'\
         +'-i <file>\tA aligned & deduped BAM file\n'\
         +'-f <file>\tGTF genome annotation\n'\
         +'-o \t\tThe table of results would be saved if -o was set (default: False)\n'\
