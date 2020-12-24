@@ -21,7 +21,7 @@ def bedScan(args):
     print("Processing the reference...")
     ref = pd.read_table(args.file_ref, comment='#', header=None)
     ref.columns = ['seq_id', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
-    ref = ref[(ref['type'] == 'transcript') & (ref['strand'] != '-') & ref['attributes'].str.match('.*gene_type \"protein_coding\".*') & ref['seq_id'].str.match('chr[0-9XY]+')]
+    ref = ref[(ref['type'] == 'transcript') & (ref['strand'] != '-') & ref['seq_id'].str.match('chr[0-9XY]+')]
     ref = ref[['seq_id', 'strand', 'start', 'end']].sort_values(by=['seq_id', 'start', 'strand'])
     ref = ref.drop_duplicates(subset=['seq_id', 'start', 'strand'], keep='first')
     ref.loc[ref['strand'] == '+', 'start'] -= 1000
