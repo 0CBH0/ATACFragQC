@@ -23,7 +23,7 @@ def bedScan(args):
     print("Processing the reference...")
     ref = pd.read_table(args.file_ref, comment='#', header=None)
     ref.columns = ['seq_id', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
-    ref = ref[(ref['type'] == 'transcript') & (ref['strand'] != '-') & ref['seq_id'].str.match('chr[0-9XY]+')]
+    ref = ref[(ref['type'] == 'transcript') & (ref['strand'] != '-') & ref['seq_id'].str.match('^chr[0-9XY]+$')]
     ref = ref[['seq_id', 'strand', 'start', 'end']].sort_values(by=['seq_id', 'start', 'strand'])
     ref = ref.drop_duplicates(subset=['seq_id', 'start', 'strand'], keep='first')
     ref.loc[ref['strand'] == '+', 'start'] -= 1000
@@ -46,7 +46,7 @@ def bedScan(args):
     len_count = pd.DataFrame({'V1': list(range(1, 501)), 'V2': len_count[1:]})
     chr_count = pd.DataFrame({'V1': list(chr_count.keys()), 'V2': list(chr_count.values())})
     chr_count = chr_count[chr_count['V1'].str.match('chr.*')]
-    chr_list = list(map(lambda x: int(x.replace('chr', '')), list(chr_count.loc[chr_count['V1'].str.match('chr[0-9]+'), 'V1'])))
+    chr_list = list(map(lambda x: int(x.replace('chr', '')), list(chr_count.loc[chr_count['V1'].str.match('^chr[0-9]+$'), 'V1'])))
     chr_list.sort()
     chr_list += ['X', 'Y', 'M']
     chr_list = list(map(lambda x: 'chr'+str(x), chr_list))
