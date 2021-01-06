@@ -111,7 +111,7 @@ def main():
     help_info = 'ATACFragQC - Version: '+__version__+'\n'\
         +'Usage:\nATACFragQC [options] -i <input.bam> -r <reference.gtf>\nArguments:\n'\
         +'-i <file>\tA aligned & deduped BAM file\n'\
-        +'-f <file>\tGTF genome annotation\n'\
+        +'-r <file>\tGTF genome annotation\n'\
         +'-o \t\tThe table of results would be saved if -o was set (default: False)\n'\
         +'-q [1-255]\tThe quality limit of alignment (default: 50)\n'\
         +'-l [50-500]\tThe length limit of nucleosome-free fragment (default: 147)\n'
