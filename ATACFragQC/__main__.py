@@ -13,13 +13,14 @@ class ArgumentList:
     quality = 50
     isize = 147
     chr_filter = ''
+    chr_list = ''
     def __init__(self):
         self.file_bam = ''
         self.file_ref = ''
         self.file_out = False
         self.quality = 50
         self.isize = 147
-        self.chr_filter = ''
+        self.chr_list = ''
 
 def chr_cmp(a, b):
     sa = str(a)
@@ -44,7 +45,12 @@ def bedScan(args):
     ref_raw = pd.read_table(args.file_ref, comment='#', header=None)
     ref_raw.columns = ['seq_id', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
     chr_list = list(set(ref_raw['seq_id']))
-    chr_list = [x for x in chr_list if len(x) < min(list(map(lambda x: len(str(x)), chr_list)))*3 ]
+    if args.chr_list != '':
+        chr_list = list(set(args.chr_list.split(',')).intersection(set(chr_list)))
+        if len(chr_list) == 0:
+            print('There is no chromosome would be calculated...')
+            return
+    chr_list = [x for x in chr_list if len(x) < min(10, min(list(map(lambda x: len(str(x)), chr_list)))*4) ]
     chr_list = sorted(list(set(chr_list).difference(set(args.chr_filter.split(',')))), key=functools.cmp_to_key(chr_cmp))
     chr_list_frag = [x for x in chr_list if re.match(r'.*[Mm]+,*', x) == None]
     ref = ref_raw[(ref_raw['type'] == 'transcript') & (ref_raw['strand'] != '-') & ref_raw['seq_id'].str.match('^'+chr_list_frag[0]+'$') & (ref_raw['start'] > 1000)]
@@ -130,12 +136,13 @@ def main():
     help_flag = False
     help_info = 'ATACFragQC - Version: '+__version__+'\n'\
         +'Usage:\nATACFragQC [options] -i <input.bam> -r <reference.gtf>\nArguments:\n'\
-        +'-h, --help\tShow this help information\n'\
+        +'-h, --help\t\tShow this help information\n'\
         +'-i, --input <file>\tA aligned & deduped BAM file\n'\
         +'-r, --reference <file>\tGTF genome annotation\n'\
         +'-o, --output [T/F]\tThe table of results would be saved if -o was set (default: False)\n'\
         +'-q, --quality [1-255]\tThe quality limit of alignment (default: 50)\n'\
         +'-l, --length [50-500]\tThe length limit of nucleosome-free fragment (default: 147)\n'\
+        +'-c, --chr [aaa,bbb]\tThe list of chromosomes would be used (default: all)\n'\
         +'-f, --filter [aaa,bbb]\tThe list of chromosomes which should be filtered (default: none)\n'
     for opt, arg in opts:
         if opt in ('-h', '--help'):
@@ -154,6 +161,8 @@ def main():
                 arguments.isize = int(arg)
         elif opt in ("-f", "--filter"):
             arguments.chr_filter = arg
+        elif opt in ("-c", "--chr"):
+            arguments.chr_list = arg
     if help_flag or arguments.file_bam == '' or arguments.file_ref == '':
         print(help_info)
         sys.exit()
