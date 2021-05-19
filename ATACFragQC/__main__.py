@@ -39,11 +39,16 @@ def chr_cmp(a, b):
     return la - lb
 
 def bedScan(args):
-    print("Processing the reference...")
+    print('Processing the reference...')
     ref = pd.read_table(args.file_ref, comment='#', header=None)
     ref.columns = ['seq_id', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
     ref_raw = pd.read_table(args.file_ref, comment='#', header=None)
     ref_raw.columns = ['seq_id', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
+    type_list = list(set(ref_raw['type']))
+    type_test = 'transcript' if 'transcript' in type_list else 'gene'
+    if not type_test in type_list:
+        print('There is no suitable term in the gtf to confirm TSSs...')
+        return
     chr_list = list(set(ref_raw['seq_id']))
     if args.chr_list != '':
         chr_list = list(set(args.chr_list.split(',')).intersection(set(chr_list)))
@@ -53,17 +58,17 @@ def bedScan(args):
     chr_list = [x for x in chr_list if len(x) < min(10, min(list(map(lambda x: len(str(x)), chr_list)))*4) ]
     chr_list = sorted(list(set(chr_list).difference(set(args.chr_filter.split(',')))), key=functools.cmp_to_key(chr_cmp))
     chr_list_frag = [x for x in chr_list if re.match(r'.*[Mm]+,*', x) == None]
-    ref = ref_raw[(ref_raw['type'] == 'transcript') & (ref_raw['strand'] != '-') & ref_raw['seq_id'].str.match('^'+chr_list_frag[0]+'$') & (ref_raw['start'] > 1000)]
+    ref = ref_raw[(ref_raw['type'] == type_test) & (ref_raw['strand'] != '-') & ref_raw['seq_id'].str.match('^'+chr_list_frag[0]+'$') & (ref_raw['start'] > 1000)]
     for term in chr_list_frag[1:]:
-        ref = ref.append(ref_raw[(ref_raw['type'] == 'transcript') & (ref_raw['strand'] != '-') & ref_raw['seq_id'].str.match('^'+term+'$') & (ref_raw['start'] > 1000)])
+        ref = ref.append(ref_raw[(ref_raw['type'] == type_test) & (ref_raw['strand'] != '-') & ref_raw['seq_id'].str.match('^'+term+'$') & (ref_raw['start'] > 1000)])
     ref = ref[['seq_id', 'strand', 'start', 'end']].sort_values(by=['seq_id', 'start', 'strand'])
     ref = ref.drop_duplicates(subset=['seq_id', 'start', 'strand'], keep='first')
     ref.loc[ref['strand'] == '+', 'start'] -= 1000
     ref.loc[ref['strand'] == '+', 'end'] = ref.loc[ref['strand'] == '+', 'start'] + 2000
     ref.index = list(range(ref.index.size))
     
-    fs = pysam.AlignmentFile(args.file_bam, "rb")
-    print("Scaning the distribution of fragments...")
+    fs = pysam.AlignmentFile(args.file_bam, 'rb')
+    print('Scaning the distribution of fragments...')
     chr_count = {}
     len_count = [0] * 501
     for chr in chr_list:
@@ -77,7 +82,7 @@ def bedScan(args):
     chr_count = pd.DataFrame({'V1': list(chr_count.keys()), 'V2': list(chr_count.values())})
     chr_count['V1'] = pd.Categorical(chr_count['V1'], categories=chr_list, ordered=True)
     
-    print("Scaning the fragments around TSSs...")
+    print('Scaning the fragments around TSSs...')
     dist_count = []
     for index, row in ref.iterrows():
         count = np.zeros(2001, dtype=np.int64)
@@ -91,22 +96,22 @@ def bedScan(args):
     factors[factors == 0] = np.mean(factors)
     dist_count = pd.DataFrame({'V1': list(range(-900, 901)), 'V2': list(np.mean(dist_count[:, 100:1901] / factors.reshape(len(factors), 1), axis=0))})
     
-    print("Saving the results...")
+    print('Saving the results...')
     (pathname, extension) = os.path.splitext(args.file_bam)
     (filepath, filename) = os.path.split(pathname)
-    ggsave(plot=ggplot(chr_count, aes(x='V1', y='V2'))+geom_bar(stat="identity", width=0.8, fill="#80B1D3")+
-        labs(x="Chromosome", y="Fragments")+
-        theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour="black"), 
-        axis_text_y=element_text(colour="black"), axis_text_x=element_text(angle=270, hjust=0.3, vjust=1, colour="black")), 
+    ggsave(plot=ggplot(chr_count, aes(x='V1', y='V2'))+geom_bar(stat='identity', width=0.8, fill='#80B1D3')+
+        labs(x='Chromosome', y='Fragments')+
+        theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), 
+        axis_text_y=element_text(colour='black'), axis_text_x=element_text(angle=270, hjust=0.3, vjust=1, colour='black')), 
         width=4, height=6, dpi=200, filename=pathname+'.tmp0.png', limitsize=False, verbose=False)
-    ggsave(plot=ggplot(len_count, aes(x='V1', y='V2'))+geom_bar(stat="identity", colour="#80B1D3", fill="#80B1D3")+
-        labs(x="\nInsert Size", y="Fragments")+
-        theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour="black"), axis_text=element_text(colour="black")), 
+    ggsave(plot=ggplot(len_count, aes(x='V1', y='V2'))+geom_bar(stat='identity', colour='#80B1D3', fill='#80B1D3')+
+        labs(x='\nInsert Size', y='Fragments')+
+        theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), axis_text=element_text(colour='black')), 
         width=6, height=6, dpi=200, filename=pathname+'.tmp1.png', limitsize=False, verbose=False)
-    ggsave(plot=ggplot(dist_count, aes(x='V1', y='V2'))+geom_line(size=1, colour="#80B1D3")+
-        labs(x="\nDistance from TSS (bp)", y="Mean TSS enrichment score")+
+    ggsave(plot=ggplot(dist_count, aes(x='V1', y='V2'))+geom_line(size=1, colour='#80B1D3')+
+        labs(x='\nDistance from TSS (bp)', y='Mean TSS enrichment score')+
         scale_x_continuous(breaks=range(-800, 801, 200))+
-        theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour="black"), axis_text=element_text(colour="black")), 
+        theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), axis_text=element_text(colour='black')), 
         width=6, height=6, dpi=200, filename=pathname+'.tmp2.png', limitsize=False, verbose=False)
     width = 0
     height = 0
@@ -147,21 +152,21 @@ def main():
     for opt, arg in opts:
         if opt in ('-h', '--help'):
             help_flag = True
-        elif opt in ("-i", "--input"):
+        elif opt in ('-i', '--input'):
             arguments.file_bam = arg
-        elif opt in ("-r", "--reference"):
+        elif opt in ('-r', '--reference'):
             arguments.file_ref = arg
-        elif opt in ("-o", "--output"):
+        elif opt in ('-o', '--output'):
             arguments.file_out = True
-        elif opt in ("-q", "--quality"):
+        elif opt in ('-q', '--quality'):
             if int(arg) >= 1 and int(arg) <= 255:
                 arguments.quality = int(arg)
-        elif opt in ("-l", "--length"):
+        elif opt in ('-l', '--length'):
             if int(arg) >= 50 and int(arg) <= 500:
                 arguments.isize = int(arg)
-        elif opt in ("-f", "--filter"):
+        elif opt in ('-f', '--filter'):
             arguments.chr_filter = arg
-        elif opt in ("-c", "--chr"):
+        elif opt in ('-c', '--chr'):
             arguments.chr_list = arg
     if help_flag or arguments.file_bam == '' or arguments.file_ref == '':
         print(help_info)
