@@ -1,4 +1,4 @@
-import os, sys, re, getopt, pysam
+import os, sys, re, getopt, functools, pysam
 import pandas as pd
 import numpy as np
 from plotnine import *
@@ -12,18 +12,44 @@ class ArgumentList:
     file_out = False
     quality = 50
     isize = 147
+    chr_filter = ''
     def __init__(self):
         self.file_bam = ''
         self.file_ref = ''
-        file_out = False
+        self.file_out = False
         self.quality = 50
         self.isize = 147
+        self.chr_filter = ''
+
+def chr_cmp(a, b):
+    sa = str(a)
+    sb = str(b)
+    la = len(sa)
+    lb = len(sb)
+    lm = min(la, lb)
+    for i in range(0, lm):
+        if sa[i] != sb[i]:
+            oa = ord(sa[i]) if sa[i] != 'M' and sa[i] != 'm' else 0x7A
+            ob = ord(sb[i]) if sb[i] != 'M' and sb[i] != 'm' else 0x7A
+            if oa < 0x3A and oa > 0x2F and ob < 0x3A and ob > 0x2F and la != lb:
+                return la - lb
+            cd = oa - ob
+            return cd
+    return la - lb
 
 def bedScan(args):
     print("Processing the reference...")
     ref = pd.read_table(args.file_ref, comment='#', header=None)
     ref.columns = ['seq_id', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
-    ref = ref[(ref['type'] == 'transcript') & (ref['strand'] != '-') & ref['seq_id'].str.match('^chr[0-9XY]+$') & (ref['start'] > 1000)]
+    ref_raw = pd.read_table(args.file_ref, comment='#', header=None)
+    ref_raw.columns = ['seq_id', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
+    chr_list = list(set(ref_raw['seq_id']))
+    chr_list = [x for x in chr_list if len(x) < min(list(map(lambda x: len(str(x)), chr_list)))*3 ]
+    chr_list = sorted(list(set(chr_list).difference(set(args.chr_filter.split(',')))), key=functools.cmp_to_key(chr_cmp))
+    chr_list_frag = [x for x in chr_list if re.match(r'.*[Mm]+,*', x) == None]
+    ref = ref_raw[(ref_raw['type'] == 'transcript') & (ref_raw['strand'] != '-') & ref_raw['seq_id'].str.match('^'+chr_list_frag[0]+'$') & (ref_raw['start'] > 1000)]
+    for term in chr_list_frag[1:]:
+        ref = ref.append(ref_raw[(ref_raw['type'] == 'transcript') & (ref_raw['strand'] != '-') & ref_raw['seq_id'].str.match('^'+term+'$') & (ref_raw['start'] > 1000)])
     ref = ref[['seq_id', 'strand', 'start', 'end']].sort_values(by=['seq_id', 'start', 'strand'])
     ref = ref.drop_duplicates(subset=['seq_id', 'start', 'strand'], keep='first')
     ref.loc[ref['strand'] == '+', 'start'] -= 1000
@@ -34,8 +60,6 @@ def bedScan(args):
     print("Scaning the distribution of fragments...")
     chr_count = {}
     len_count = [0] * 501
-    chr_list = list(set(ref['seq_id']))
-    chr_list.append('chrM')
     for chr in chr_list:
         count = 0
         for read in fs.fetch(chr):
@@ -45,11 +69,6 @@ def bedScan(args):
         chr_count[chr] = count
     len_count = pd.DataFrame({'V1': list(range(1, 501)), 'V2': len_count[1:]})
     chr_count = pd.DataFrame({'V1': list(chr_count.keys()), 'V2': list(chr_count.values())})
-    chr_count = chr_count[chr_count['V1'].str.match('chr.*')]
-    chr_list = list(map(lambda x: int(x.replace('chr', '')), list(chr_count.loc[chr_count['V1'].str.match('^chr[0-9]+$'), 'V1'])))
-    chr_list.sort()
-    chr_list += ['X', 'Y', 'M']
-    chr_list = list(map(lambda x: 'chr'+str(x), chr_list))
     chr_count['V1'] = pd.Categorical(chr_count['V1'], categories=chr_list, ordered=True)
     
     print("Scaning the fragments around TSSs...")
@@ -101,6 +120,7 @@ def bedScan(args):
         chr_count.to_csv(pathname+'_chr.tsv', sep='\t', index=False, header=False)
         len_count.to_csv(pathname+'_fl.tsv', sep='\t', index=False, header=False)
         dist_count.to_csv(pathname+'_tss.tsv', sep='\t', index=False, header=False)
+        pd.DataFrame({'V1': factors}).to_csv(pathname+'_base.tsv', sep='\t', index=False, header=False)
 
 def main():
     opts, args = getopt.getopt(sys.argv[1:], 
@@ -110,11 +130,13 @@ def main():
     help_flag = False
     help_info = 'ATACFragQC - Version: '+__version__+'\n'\
         +'Usage:\nATACFragQC [options] -i <input.bam> -r <reference.gtf>\nArguments:\n'\
-        +'-i <file>\tA aligned & deduped BAM file\n'\
-        +'-r <file>\tGTF genome annotation\n'\
-        +'-o \t\tThe table of results would be saved if -o was set (default: False)\n'\
-        +'-q [1-255]\tThe quality limit of alignment (default: 50)\n'\
-        +'-l [50-500]\tThe length limit of nucleosome-free fragment (default: 147)\n'
+        +'-h, --help\tShow this help information\n'\
+        +'-i, --input <file>\tA aligned & deduped BAM file\n'\
+        +'-r, --reference <file>\tGTF genome annotation\n'\
+        +'-o, --output [T/F]\tThe table of results would be saved if -o was set (default: False)\n'\
+        +'-q, --quality [1-255]\tThe quality limit of alignment (default: 50)\n'\
+        +'-l, --length [50-500]\tThe length limit of nucleosome-free fragment (default: 147)\n'\
+        +'-f, --filter [aaa,bbb]\tThe list of chromosomes which should be filtered (default: none)\n'
     for opt, arg in opts:
         if opt in ('-h', '--help'):
             help_flag = True
@@ -130,6 +152,8 @@ def main():
         elif opt in ("-l", "--length"):
             if int(arg) >= 50 and int(arg) <= 500:
                 arguments.isize = int(arg)
+        elif opt in ("-f", "--filter"):
+            arguments.chr_filter = arg
     if help_flag or arguments.file_bam == '' or arguments.file_ref == '':
         print(help_info)
         sys.exit()
@@ -137,7 +161,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    file_bam = ''
-    file_ref = ''
-    file_out = ''
-    quality = 0

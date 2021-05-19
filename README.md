@@ -4,7 +4,7 @@ The Python toolkits designed to control the fragment quality of Bulk/SingCell AT
 
 ## Installation
 ~~~
-sudo python3 -m pip install ATACFragQC
+python3 -m pip install ATACFragQC
 ~~~
 
 ## Usage
