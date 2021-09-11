@@ -46,16 +46,14 @@ def bedScan(args):
         print('There is no index file for the bam...')
         return
     print('Processing the reference...')
-    ref = pd.read_table(args.file_ref, comment='#', header=None)
-    ref.columns = ['seq_id', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
-    ref_raw = pd.read_table(args.file_ref, comment='#', header=None)
+    ref_raw = pd.read_table(args.file_ref, comment='#', header=None, dtype={0:str})
     ref_raw.columns = ['seq_id', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
     type_list = list(set(ref_raw['type']))
     type_test = 'transcript' if 'transcript' in type_list else 'gene'
     if not type_test in type_list:
         print('There is no suitable term in the gtf to confirm TSSs...')
         return
-    chr_list = list(map(lambda x: str(x), set(ref_raw['seq_id'])))
+    chr_list = list(set(ref_raw['seq_id']))
     if args.chr_list != '':
         chr_list = list(set(args.chr_list.split(',')).intersection(set(chr_list)))
     chr_list = [x for x in chr_list if len(x) < min(10, min(list(map(lambda x: len(x), chr_list)))*4)]
@@ -68,7 +66,7 @@ def bedScan(args):
     if 'SQ' in fs_header.keys():
         for term in fs_header['SQ']:
             if 'SN' in term.keys():
-                chr_detect.append(term['SN'])
+                chr_detect.append(str(term['SN']))
     if len(chr_detect) > 0:
         chr_list = list(set(chr_list).intersection(set(chr_detect)))
     if len(chr_list) == 0:
