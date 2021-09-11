@@ -39,6 +39,12 @@ def chr_cmp(a, b):
     return la - lb
 
 def bedScan(args):
+    print('ATACFragQC - Version: '+__version__+'\n')
+    (pathname, extension) = os.path.splitext(args.file_bam)
+    (filepath, filename) = os.path.split(pathname)
+    if not os.path.isfile(args.file_bam+'.bai'):
+        print('There is no index file for the bam...')
+        return
     print('Processing the reference...')
     ref = pd.read_table(args.file_ref, comment='#', header=None)
     ref.columns = ['seq_id', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
@@ -52,10 +58,22 @@ def bedScan(args):
     chr_list = list(set(ref_raw['seq_id']))
     if args.chr_list != '':
         chr_list = list(set(args.chr_list.split(',')).intersection(set(chr_list)))
-        if len(chr_list) == 0:
-            print('There is no chromosome would be calculated...')
-            return
-    chr_list = [x for x in chr_list if len(x) < min(10, min(list(map(lambda x: len(str(x)), chr_list)))*4) ]
+    chr_list = [x for x in chr_list if len(x) < min(10, min(list(map(lambda x: len(str(x)), chr_list)))*4)]
+    if len(chr_list) == 0:
+        print('There is no chromosome would be calculated...')
+        return
+    fs = pysam.AlignmentFile(args.file_bam, 'rb')
+    chr_detect = []
+    fs_header = fs.header.to_dict()
+    if 'SQ' in fs_header.keys():
+        for term in fs_header['SQ']:
+            if 'SN' in term.keys():
+                chr_detect.append(term['SN'])
+    if len(chr_detect) > 0:
+        chr_list = list(set(chr_list).intersection(set(chr_detect)))
+    if len(chr_list) == 0:
+        print('There is no chromosome would be calculated...')
+        return
     chr_list = sorted(list(set(chr_list).difference(set(args.chr_filter.split(',')))), key=functools.cmp_to_key(chr_cmp))
     chr_list_frag = [x for x in chr_list if re.match(r'.*[Mm]+,*', x) == None]
     ref = ref_raw[(ref_raw['type'] == type_test) & (ref_raw['strand'] != '-') & ref_raw['seq_id'].str.match('^'+chr_list_frag[0]+'$') & (ref_raw['start'] > 1000)]
@@ -67,7 +85,6 @@ def bedScan(args):
     ref.loc[ref['strand'] == '+', 'end'] = ref.loc[ref['strand'] == '+', 'start'] + 2000
     ref.index = list(range(ref.index.size))
     
-    fs = pysam.AlignmentFile(args.file_bam, 'rb')
     print('Scaning the distribution of fragments...')
     chr_count = {}
     len_count = [0] * 501
@@ -97,8 +114,6 @@ def bedScan(args):
     dist_count = pd.DataFrame({'V1': list(range(-900, 901)), 'V2': list(np.mean(dist_count[:, 100:1901] / factors.reshape(len(factors), 1), axis=0))})
     
     print('Saving the results...')
-    (pathname, extension) = os.path.splitext(args.file_bam)
-    (filepath, filename) = os.path.split(pathname)
     ggsave(plot=ggplot(chr_count, aes(x='V1', y='V2'))+geom_bar(stat='identity', width=0.8, fill='#80B1D3')+
         labs(x='Chromosome', y='Fragments')+
         theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), 
