@@ -39,7 +39,6 @@ def chr_cmp(a, b):
     return la - lb
 
 def bedScan(args):
-    print('ATACFragQC - Version: '+__version__+'\n')
     (pathname, extension) = os.path.splitext(args.file_bam)
     (filepath, filename) = os.path.split(pathname)
     if not os.path.isfile(args.file_bam+'.bai'):
@@ -152,8 +151,7 @@ def main():
         ['help', 'output', 'input=', 'reference=', 'quality=', 'length='])
     arguments = ArgumentList()
     help_flag = False
-    help_info = 'ATACFragQC - Version: '+__version__+'\n'\
-        +'Usage:\nATACFragQC [options] -i <input.bam> -r <reference.gtf>\nArguments:\n'\
+    help_info = 'Usage:\nATACFragQC [options] -i <input.bam> -r <reference.gtf>\nArguments:\n'\
         +'-h, --help\t\tShow this help information\n'\
         +'-i, --input <file>\tA aligned & deduped BAM file\n'\
         +'-r, --reference <file>\tGTF genome annotation\n'\
@@ -181,6 +179,7 @@ def main():
             arguments.chr_filter = arg
         elif opt in ('-c', '--chr'):
             arguments.chr_list = arg
+    print('ATACFragQC - Version: '+__version__)
     if help_flag or arguments.file_bam == '' or arguments.file_ref == '':
         print(help_info)
         sys.exit()
