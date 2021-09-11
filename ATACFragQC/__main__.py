@@ -55,10 +55,10 @@ def bedScan(args):
     if not type_test in type_list:
         print('There is no suitable term in the gtf to confirm TSSs...')
         return
-    chr_list = list(set(ref_raw['seq_id']))
+    chr_list = list(map(lambda x: str(x), set(ref_raw['seq_id'])))
     if args.chr_list != '':
         chr_list = list(set(args.chr_list.split(',')).intersection(set(chr_list)))
-    chr_list = [x for x in chr_list if len(x) < min(10, min(list(map(lambda x: len(str(x)), chr_list)))*4)]
+    chr_list = [x for x in chr_list if len(x) < min(10, min(list(map(lambda x: len(x), chr_list)))*4)]
     if len(chr_list) == 0:
         print('There is no chromosome would be calculated...')
         return
