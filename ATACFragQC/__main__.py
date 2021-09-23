@@ -60,7 +60,8 @@ def bedScan(args):
     chr_list = list(set(ref_raw['seq_id']))
     if args.chr_list != '':
         chr_list = list(set(args.chr_list.split(',')).intersection(set(chr_list)))
-    chr_list = [x for x in chr_list if len(x) < min(cn_len, min(list(map(lambda x: len(x), chr_list)))*4)]
+    if cn_len > 0:
+        chr_list = [x for x in chr_list if len(x) < min(cn_len, min(list(map(lambda x: len(x), chr_list)))*4)]
     if len(chr_list) == 0:
         print('There is no chromosome would be calculated...')
         return
@@ -159,8 +160,8 @@ def bedScan(args):
 
 def main():
     opts, args = getopt.getopt(sys.argv[1:], 
-        'hoi:r:q:l:', 
-        ['help', 'output', 'input=', 'reference=', 'quality=', 'length='])
+        'hoi:r:q:l:f:c:p:n:', 
+        ['help', 'output', 'input=', 'reference=', 'quality=', 'length=', 'filter=', 'chr=', 'pic=', 'nl='])
     arguments = ArgumentList()
     help_flag = False
     help_info = 'Usage:\nATACFragQC [options] -i <input.bam> -r <reference.gtf>\nArguments:\n'\
@@ -171,7 +172,7 @@ def main():
         +'-q, --quality [1-255]\tThe quality limit of alignment (default: 50)\n'\
         +'-l, --length [50-500]\tThe length limit of nucleosome-free fragment (default: 147)\n'\
         +'-c, --chr [aaa,bbb]\tThe list of chromosomes would be used (default: all)\n'\
-        +'-n, --nl [0-X]\tThe length limit of chromosome names (default: 10)\n'\
+        +'-n, --nl [0-X]\tThe length limit of chromosome names (default: 10, 0 is no limit)\n'\
         +'-p, --pic [a,b,c]\tThe list of images would be shown (default: all)\n'\
         +'-f, --filter [aaa,bbb]\tThe list of chromosomes which should be filtered (default: none)\n'
     for opt, arg in opts:
@@ -196,7 +197,7 @@ def main():
         elif opt in ('-p', '--pic'):
             arguments.pic_list = arg
         elif opt in ('-n', '--nl'):
-            arguments.cn_len = arg
+            arguments.cn_len = int(arg)
     print('ATACFragQC - Version: '+__version__)
     if help_flag or arguments.file_bam == '' or arguments.file_ref == '':
         print(help_info)
