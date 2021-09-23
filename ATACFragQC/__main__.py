@@ -12,15 +12,20 @@ class ArgumentList:
     file_out = False
     quality = 50
     isize = 147
+    cn_len = 10
     chr_filter = ''
     chr_list = ''
+    pic_list = 'a,b,c'
     def __init__(self):
         self.file_bam = ''
         self.file_ref = ''
         self.file_out = False
         self.quality = 50
         self.isize = 147
+        cn_len = 10
+        self.chr_filter = ''
         self.chr_list = ''
+        self.pic_list = 'a,b,c'
 
 def chr_cmp(a, b):
     sa = str(a)
@@ -55,7 +60,7 @@ def bedScan(args):
     chr_list = list(set(ref_raw['seq_id']))
     if args.chr_list != '':
         chr_list = list(set(args.chr_list.split(',')).intersection(set(chr_list)))
-    chr_list = [x for x in chr_list if len(x) < min(10, min(list(map(lambda x: len(x), chr_list)))*4)]
+    chr_list = [x for x in chr_list if len(x) < min(cn_len, min(list(map(lambda x: len(x), chr_list)))*4)]
     if len(chr_list) == 0:
         print('There is no chromosome would be calculated...')
         return
@@ -111,23 +116,35 @@ def bedScan(args):
     dist_count = pd.DataFrame({'V1': list(range(-900, 901)), 'V2': list(np.mean(dist_count[:, 100:1901] / factors.reshape(len(factors), 1), axis=0))})
     
     print('Saving the results...')
-    ggsave(plot=ggplot(chr_count, aes(x='V1', y='V2'))+geom_bar(stat='identity', width=0.8, fill='#80B1D3')+
-        labs(x='Chromosome', y='Fragments')+
-        theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), 
-        axis_text_y=element_text(colour='black'), axis_text_x=element_text(angle=270, hjust=0.3, vjust=1, colour='black')), 
-        width=4, height=6, dpi=200, filename=pathname+'.tmp0.png', limitsize=False, verbose=False)
-    ggsave(plot=ggplot(len_count, aes(x='V1', y='V2'))+geom_bar(stat='identity', colour='#80B1D3', fill='#80B1D3')+
-        labs(x='\nInsert Size', y='Fragments')+
-        theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), axis_text=element_text(colour='black')), 
-        width=6, height=6, dpi=200, filename=pathname+'.tmp1.png', limitsize=False, verbose=False)
-    ggsave(plot=ggplot(dist_count, aes(x='V1', y='V2'))+geom_line(size=1, colour='#80B1D3')+
-        labs(x='\nDistance from TSS (bp)', y='Mean TSS enrichment score')+
-        scale_x_continuous(breaks=range(-800, 801, 200))+
-        theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), axis_text=element_text(colour='black')), 
-        width=6, height=6, dpi=200, filename=pathname+'.tmp2.png', limitsize=False, verbose=False)
+    if args.file_out:
+        chr_count.to_csv(pathname+'_chr.tsv', sep='\t', index=False, header=False)
+        len_count.to_csv(pathname+'_fl.tsv', sep='\t', index=False, header=False)
+        dist_count.to_csv(pathname+'_tss.tsv', sep='\t', index=False, header=False)
+        pd.DataFrame({'V1': factors}).to_csv(pathname+'_base.tsv', sep='\t', index=False, header=False)
+    pic_list = ['a', 'b', 'c']
+    pic_list = list(set(args.pic_list.split(',')).intersection(set(pic_list)))
+    if len(pic_list) == 0:
+        return
+    if 'a' in pic_list:
+        ggsave(plot=ggplot(chr_count, aes(x='V1', y='V2'))+geom_bar(stat='identity', width=0.8, fill='#80B1D3')+
+            labs(x='Chromosome', y='Fragments')+
+            theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), 
+            axis_text_y=element_text(colour='black'), axis_text_x=element_text(angle=270, hjust=0.3, vjust=1, colour='black')), 
+            width=4, height=6, dpi=200, filename=pathname+'.tmpa.png', limitsize=False, verbose=False)
+    if 'b' in pic_list:
+        ggsave(plot=ggplot(len_count, aes(x='V1', y='V2'))+geom_bar(stat='identity', colour='#80B1D3', fill='#80B1D3')+
+            labs(x='\nInsert Size', y='Fragments')+
+            theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), axis_text=element_text(colour='black')), 
+            width=6, height=6, dpi=200, filename=pathname+'.tmpb.png', limitsize=False, verbose=False)
+    if 'c' in pic_list:
+        ggsave(plot=ggplot(dist_count, aes(x='V1', y='V2'))+geom_line(size=1, colour='#80B1D3')+
+            labs(x='\nDistance from TSS (bp)', y='Mean TSS enrichment score')+
+            scale_x_continuous(breaks=range(-800, 801, 200))+
+            theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), axis_text=element_text(colour='black')), 
+            width=6, height=6, dpi=200, filename=pathname+'.tmpc.png', limitsize=False, verbose=False)
     width = 0
     height = 0
-    imgs = [Image.open(pathname+'.tmp'+str(i)+'.png') for i in range(3)]
+    imgs = [Image.open(pathname+'.tmp'+c+'.png') for c in pic_list]
     for img in imgs:
         width += img.width
         height = max(height, img.height)
@@ -138,12 +155,7 @@ def bedScan(args):
         pos += img.width
         img.close()
     result.save(pathname+'_qc.png')
-    [os.remove(pathname+'.tmp'+str(i)+'.png') for i in range(3)]
-    if args.file_out:
-        chr_count.to_csv(pathname+'_chr.tsv', sep='\t', index=False, header=False)
-        len_count.to_csv(pathname+'_fl.tsv', sep='\t', index=False, header=False)
-        dist_count.to_csv(pathname+'_tss.tsv', sep='\t', index=False, header=False)
-        pd.DataFrame({'V1': factors}).to_csv(pathname+'_base.tsv', sep='\t', index=False, header=False)
+    [os.remove(pathname+'.tmp'+c+'.png') for c in pic_list]
 
 def main():
     opts, args = getopt.getopt(sys.argv[1:], 
@@ -159,6 +171,8 @@ def main():
         +'-q, --quality [1-255]\tThe quality limit of alignment (default: 50)\n'\
         +'-l, --length [50-500]\tThe length limit of nucleosome-free fragment (default: 147)\n'\
         +'-c, --chr [aaa,bbb]\tThe list of chromosomes would be used (default: all)\n'\
+        +'-n, --nl [0-X]\tThe length limit of chromosome names (default: 10)\n'\
+        +'-p, --pic [a,b,c]\tThe list of images would be shown (default: all)\n'\
         +'-f, --filter [aaa,bbb]\tThe list of chromosomes which should be filtered (default: none)\n'
     for opt, arg in opts:
         if opt in ('-h', '--help'):
@@ -178,7 +192,11 @@ def main():
         elif opt in ('-f', '--filter'):
             arguments.chr_filter = arg
         elif opt in ('-c', '--chr'):
-            arguments.chr_list = arg
+            arguments.chr_filter = arg
+        elif opt in ('-p', '--pic'):
+            arguments.pic_list = arg
+        elif opt in ('-n', '--nl'):
+            arguments.cn_len = arg
     print('ATACFragQC - Version: '+__version__)
     if help_flag or arguments.file_bam == '' or arguments.file_ref == '':
         print(help_info)
