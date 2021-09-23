@@ -60,8 +60,8 @@ def bedScan(args):
     chr_list = list(set(ref_raw['seq_id']))
     if args.chr_list != '':
         chr_list = list(set(args.chr_list.split(',')).intersection(set(chr_list)))
-    if cn_len > 0:
-        chr_list = [x for x in chr_list if len(x) < min(cn_len, min(list(map(lambda x: len(x), chr_list)))*4)]
+    if args.cn_len > 0:
+        chr_list = [x for x in chr_list if len(x) < min(args.cn_len, min(list(map(lambda x: len(x), chr_list)))*4)]
     if len(chr_list) == 0:
         print('There is no chromosome would be calculated...')
         return
