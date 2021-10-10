@@ -112,15 +112,17 @@ def bedScan(args):
         if sum(count) > 0:
             dist_count.append(count)
     dist_count = np.array(dist_count)
-    factors = np.mean(dist_count[:, list(range(0,100))+list(range(1901,2001))], axis=1)
-    factors[factors == 0] = np.mean(factors)
-    dist_count = pd.DataFrame({'V1': list(range(-900, 901)), 'V2': list(np.mean(dist_count[:, 100:1901] / factors.reshape(len(factors), 1), axis=0))})
+    if dist_count.size > 0:
+        factors = np.mean(dist_count[:, list(range(0,100))+list(range(1901,2001))], axis=1)
+        factors[factors == 0] = np.mean(factors)
+        dist_count = pd.DataFrame({'V1': list(range(-900, 901)), 'V2': list(np.mean(dist_count[:, 100:1901] / factors.reshape(len(factors), 1), axis=0))})
     
     print('Saving the results...')
     if args.file_out:
         chr_count.to_csv(pathname+'_chr.tsv', sep='\t', index=False, header=False)
         len_count.to_csv(pathname+'_fl.tsv', sep='\t', index=False, header=False)
-        dist_count.to_csv(pathname+'_tss.tsv', sep='\t', index=False, header=False)
+        if dist_count.size > 0:
+            dist_count.to_csv(pathname+'_tss.tsv', sep='\t', index=False, header=False)
         pd.DataFrame({'V1': factors}).to_csv(pathname+'_base.tsv', sep='\t', index=False, header=False)
     pic_list = ['a', 'b', 'c']
     pic_list = list(set(args.pic_list.split(',')).intersection(set(pic_list)))
@@ -137,7 +139,7 @@ def bedScan(args):
             labs(x='\nInsert Size', y='Fragments')+
             theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), axis_text=element_text(colour='black')), 
             width=6, height=6, dpi=200, filename=pathname+'.tmpb.png', limitsize=False, verbose=False)
-    if 'c' in pic_list:
+    if 'c' in pic_list and dist_count.size > 0:
         ggsave(plot=ggplot(dist_count, aes(x='V1', y='V2'))+geom_line(size=1, colour='#80B1D3')+
             labs(x='\nDistance from TSS (bp)', y='Mean TSS enrichment score')+
             scale_x_continuous(breaks=range(-800, 801, 200))+
