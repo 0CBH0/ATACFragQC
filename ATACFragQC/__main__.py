@@ -123,7 +123,7 @@ def bedScan(args):
         len_count.to_csv(pathname+'_fl.tsv', sep='\t', index=False, header=False)
         if dist_count.size > 0:
             dist_count.to_csv(pathname+'_tss.tsv', sep='\t', index=False, header=False)
-        pd.DataFrame({'V1': factors}).to_csv(pathname+'_base.tsv', sep='\t', index=False, header=False)
+            pd.DataFrame({'V1': factors}).to_csv(pathname+'_base.tsv', sep='\t', index=False, header=False)
     pic_list = ['a', 'b', 'c']
     pic_list = list(set(args.pic_list.split(',')).intersection(set(pic_list)))
     if len(pic_list) == 0:
