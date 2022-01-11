@@ -10,7 +10,7 @@ class ArgumentList:
     file_bam = ''
     file_ref = ''
     file_out = False
-    quality = 50
+    quality = 5
     isize = 147
     cn_len = 10
     chr_filter = ''
@@ -20,7 +20,7 @@ class ArgumentList:
         self.file_bam = ''
         self.file_ref = ''
         self.file_out = False
-        self.quality = 50
+        self.quality = 5
         self.isize = 147
         cn_len = 10
         self.chr_filter = ''
@@ -94,8 +94,8 @@ def bedScan(args):
     for chr in chr_list:
         count = 0
         for read in fs.fetch(chr):
-            if read.mapq > args.quality and read.isize < 501:
-                len_count[read.isize] += 1
+            if (frag.flag & 35) == 35 and read.mapq > args.quality and abs(read.isize) < 501:
+                len_count[abs(read.isize)] += 1
                 count += 1
         chr_count[chr] = count
     len_count = pd.DataFrame({'V1': list(range(1, 501)), 'V2': len_count[1:]})
