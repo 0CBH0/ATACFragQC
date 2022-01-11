@@ -113,10 +113,10 @@ def bedScan(args):
         count = np.zeros(2001, dtype=np.int64)
         for frag in fs.fetch(row['seq_id'], row['start'], row['end']):
             if args.calc_mode == 'F':
-                if (read.flag & 65) == 65 and (read.flag & 1808) == 0 and frag.mapq > args.quality and frag.isize > 0 and frag.isize < args.isize:
+                if (frag.flag & 65) == 65 and (frag.flag & 1808) == 0 and frag.mapq > args.quality and frag.isize > 0 and frag.isize < args.isize:
                     count[range(max(0, frag.pos - row['start']), min(2001, frag.pos + frag.isize - row['start']))] += 1
             else:
-                if (read.flag & 65) == 65 and (read.flag & 1808) == 0 and frag.mapq > args.quality and frag.isize > 0:
+                if (frag.flag & 65) == 65 and (frag.flag & 1808) == 0 and frag.mapq > args.quality and frag.isize > 0:
                     count[max(0, frag.pos - row['start'])] += 1
                     count[min(2001, frag.pos + frag.isize - row['start']) - 1] += 1
         if sum(count) > 0:
