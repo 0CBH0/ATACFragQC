@@ -10,19 +10,23 @@ class ArgumentList:
     file_bam = ''
     file_ref = ''
     file_out = False
+    group_marker = ''
     quality = 5
     isize = 147
     cn_len = 10
     chr_filter = ''
     chr_list = ''
+    calc_mode = 'F'
     pic_list = 'a,b,c'
     def __init__(self):
         self.file_bam = ''
         self.file_ref = ''
         self.file_out = False
+        self.group_marker = ''
         self.quality = 5
         self.isize = 147
-        cn_len = 10
+        self.cn_len = 10
+        self.calc_mode = 'F'
         self.chr_filter = ''
         self.chr_list = ''
         self.pic_list = 'a,b,c'
@@ -104,11 +108,17 @@ def bedScan(args):
     
     print('Scaning the fragments around TSSs...')
     dist_count = []
+    dist_count_group = {}
     for index, row in ref.iterrows():
         count = np.zeros(2001, dtype=np.int64)
         for frag in fs.fetch(row['seq_id'], row['start'], row['end']):
-            if (frag.flag == 99 or frag.flag == 163) and frag.mapq > args.quality and frag.isize < args.isize:
-                count[range(max(0, frag.pos - row['start']), min(2001, frag.pos + frag.isize - row['start']))] += 1
+            if args.calc_mode == 'F':
+                if (frag.flag == 99 or frag.flag == 163) and frag.mapq > args.quality and frag.isize < args.isize:
+                    count[range(max(0, frag.pos - row['start']), min(2001, frag.pos + frag.isize - row['start']))] += 1
+            else:
+                if (frag.flag == 99 or frag.flag == 163) and frag.mapq > args.quality:
+                    count[max(0, frag.pos - row['start'])] += 1
+                    count[min(2001, frag.pos + frag.isize - row['start']) - 1] += 1
         if sum(count) > 0:
             dist_count.append(count)
     dist_count = np.array(dist_count)
@@ -127,6 +137,8 @@ def bedScan(args):
     pic_list = ['a', 'b', 'c']
     pic_list = list(set(pic_list).intersection(set(args.pic_list.split(','))))
     pic_list.sort()
+    if dist_count.size == 0:
+        pic_list.remove('c')
     if len(pic_list) == 0:
         return
     if 'a' in pic_list:
@@ -140,7 +152,7 @@ def bedScan(args):
             labs(x='\nInsert Size', y='Fragments')+
             theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), axis_text=element_text(colour='black')), 
             width=6, height=6, dpi=200, filename=pathname+'.tmpb.png', limitsize=False, verbose=False)
-    if 'c' in pic_list and dist_count.size > 0:
+    if 'c' in pic_list:
         ggsave(plot=ggplot(dist_count, aes(x='V1', y='V2'))+geom_line(size=1, colour='#80B1D3')+
             labs(x='\nDistance from TSS (bp)', y='Mean TSS enrichment score')+
             scale_x_continuous(breaks=range(-800, 801, 200))+
@@ -163,15 +175,17 @@ def bedScan(args):
 
 def main():
     opts, args = getopt.getopt(sys.argv[1:], 
-        'hoi:r:q:l:f:c:p:n:', 
-        ['help', 'output', 'input=', 'reference=', 'quality=', 'length=', 'filter=', 'chr=', 'pic=', 'nl='])
+        'hoi:r:g:m:q:l:f:c:p:n:', 
+        ['help', 'output', 'input=', 'reference=', 'group=', 'mode=', 'quality=', 'length=', 'filter=', 'chr=', 'pic=', 'nl='])
     arguments = ArgumentList()
     help_flag = False
     help_info = 'Usage:\nATACFragQC [options] -i <input.bam> -r <reference.gtf>\nArguments:\n'\
         +'-h, --help\t\tShow this help information\n'\
         +'-i, --input <file>\tA aligned & deduped BAM file\n'\
         +'-r, --reference <file>\tGTF genome annotation\n'\
+        +'-g, --group [marker]\tThe TSS of each group would be calculated if -g was set\n'\
         +'-o, --output [T/F]\tThe table of results would be saved if -o was set (default: False)\n'\
+        +'-m, --mode [F/C]\tThe TSS enrichment would be calculated by fragments (F) or cutsites(C) (default: F)\n'\
         +'-q, --quality [1-255]\tThe quality limit of alignment (default: 5)\n'\
         +'-l, --length [50-500]\tThe length limit of nucleosome-free fragment (default: 147)\n'\
         +'-c, --chr [aaa,bbb]\tThe list of chromosomes would be used (default: all)\n'\
@@ -185,6 +199,8 @@ def main():
             arguments.file_bam = arg
         elif opt in ('-r', '--reference'):
             arguments.file_ref = arg
+        elif opt in ('-g', '--group'):
+            arguments.group_marker = arg
         elif opt in ('-o', '--output'):
             arguments.file_out = True
         elif opt in ('-q', '--quality'):
@@ -193,6 +209,8 @@ def main():
         elif opt in ('-l', '--length'):
             if int(arg) >= 50 and int(arg) <= 500:
                 arguments.isize = int(arg)
+        elif opt in ('-m', '--mode'):
+            arguments.calc_mode = arg
         elif opt in ('-f', '--filter'):
             arguments.chr_filter = arg
         elif opt in ('-c', '--chr'):
