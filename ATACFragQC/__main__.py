@@ -124,7 +124,7 @@ def bedScan(args):
     dist_count = np.array(dist_count)
     if dist_count.size > 0:
         factors = np.mean(dist_count[:, list(range(0,100))+list(range(1901,2001))], axis=1)
-        factors[factors == 0] = np.mean(factors)
+        factors[factors == 0] = np.mean(factors) if np.mean(factors) > 0 else 1
         dist_count = pd.DataFrame({'V1': list(range(-900, 901)), 'V2': list(np.mean(dist_count[:, 100:1901] / factors.reshape(len(factors), 1), axis=0))})
     
     print('Saving the results...')
