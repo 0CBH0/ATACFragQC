@@ -94,8 +94,8 @@ def bedScan(args):
     for chr in chr_list:
         count = 0
         for read in fs.fetch(chr):
-            if (frag.flag & 35) == 35 and read.mapq > args.quality and abs(read.isize) < 501:
-                len_count[abs(read.isize)] += 1
+            if (read.flag & 35) == 35 and (read.flag & 796) == 0 and read.mapq > args.quality and read.isize < 501:
+                len_count[read.isize] += 1
                 count += 1
         chr_count[chr] = count
     len_count = pd.DataFrame({'V1': list(range(1, 501)), 'V2': len_count[1:]})
@@ -107,7 +107,7 @@ def bedScan(args):
     for index, row in ref.iterrows():
         count = np.zeros(2001, dtype=np.int64)
         for frag in fs.fetch(row['seq_id'], row['start'], row['end']):
-            if frag.flag == 99 and frag.mapq > args.quality and frag.isize < args.isize:
+            if (frag.flag == 99 or frag.flag == 163) and frag.mapq > args.quality and frag.isize < args.isize:
                 count[range(max(0, frag.pos - row['start']), min(2001, frag.pos + frag.isize - row['start']))] += 1
         if sum(count) > 0:
             dist_count.append(count)
@@ -171,7 +171,7 @@ def main():
         +'-i, --input <file>\tA aligned & deduped BAM file\n'\
         +'-r, --reference <file>\tGTF genome annotation\n'\
         +'-o, --output [T/F]\tThe table of results would be saved if -o was set (default: False)\n'\
-        +'-q, --quality [1-255]\tThe quality limit of alignment (default: 50)\n'\
+        +'-q, --quality [1-255]\tThe quality limit of alignment (default: 5)\n'\
         +'-l, --length [50-500]\tThe length limit of nucleosome-free fragment (default: 147)\n'\
         +'-c, --chr [aaa,bbb]\tThe list of chromosomes would be used (default: all)\n'\
         +'-n, --nl [0-X]\tThe length limit of chromosome names (default: 10, 0 is no limit)\n'\
