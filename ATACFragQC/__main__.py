@@ -59,7 +59,7 @@ def bedScan(args):
         return
     chr_list = list(set(ref_raw['seq_id']))
     if args.chr_list != '':
-        chr_list = list(set(args.chr_list.split(',')).intersection(set(chr_list)))
+        chr_list = list(set(chr_list).intersection(set(args.chr_list.split(','))))
     if args.cn_len > 0:
         chr_list = [x for x in chr_list if len(x) < min(args.cn_len, min(list(map(lambda x: len(x), chr_list)))*4)]
     if len(chr_list) == 0:
@@ -125,7 +125,8 @@ def bedScan(args):
             dist_count.to_csv(pathname+'_tss.tsv', sep='\t', index=False, header=False)
             pd.DataFrame({'V1': factors}).to_csv(pathname+'_base.tsv', sep='\t', index=False, header=False)
     pic_list = ['a', 'b', 'c']
-    pic_list = list(set(args.pic_list.split(',')).intersection(set(pic_list)))
+    pic_list = list(set(pic_list).intersection(set(args.pic_list.split(','))))
+    pic_list.sort()
     if len(pic_list) == 0:
         return
     if 'a' in pic_list:
