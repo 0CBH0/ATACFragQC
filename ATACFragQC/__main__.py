@@ -94,7 +94,7 @@ def bedScan(args):
     for chr in chr_list:
         count = 0
         for read in fs.fetch(chr):
-            if read.flag == 99 and read.mapq > args.quality and read.isize < 501:
+            if read.mapq > args.quality and read.isize < 501:
                 len_count[read.isize] += 1
                 count += 1
         chr_count[chr] = count
