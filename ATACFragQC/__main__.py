@@ -184,7 +184,7 @@ def bedScan(args):
 
 def main():
     opts, args = getopt.getopt(sys.argv[1:], 
-        "hoi:r:g:m:q:l:f:c:p:n:b", 
+        "hoi:r:g:m:q:l:f:c:p:n:b:", 
         ["help", "output", "input=", "reference=", "group=", "mode=", "quality=", "length=", "filter=", "chr=", "pic=", "nl=","bg="])
     arguments = ArgumentList()
     help_flag = False
