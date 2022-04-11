@@ -157,9 +157,9 @@ def bedScan(args):
             width=6, height=6, dpi=200, filename=pathname+".tmpb.png", limitsize=False, verbose=False)
     if "c" in pic_list:
         break_length = 50
-        if args.range[0] - args.range[1] > 2000:
+        if args.range[0] - args.range[1] > 1000:
             break_length = 500
-        elif args.range[0] - args.range[1] > 400:
+        elif args.range[0] - args.range[1] > 300:
             break_length = 200
         break_range = max(1, (args.range[0]-args.range[1])//break_length)*break_length
         ggsave(plot=ggplot(dist_count, aes(x="V1", y="V2"))+geom_line(size=1, colour="#80B1D3")+
