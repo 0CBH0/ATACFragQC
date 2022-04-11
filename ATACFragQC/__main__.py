@@ -55,7 +55,7 @@ def bedScan(args):
     if not os.path.isfile(args.file_bam+'.bai'):
         print('There is no index file for the bam...')
         print('Try to find Path to call samtools in the environment variable...')
-        if os.system("which samtools") == 0 :
+        if os.system("which samtools") == 0:
             print("create "+args.file_bam+" index...")
             os.system("samtools index "+args.file_bam)
             print("Index creation complete ")
