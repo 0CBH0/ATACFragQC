@@ -53,14 +53,12 @@ def bedScan(args):
     (pathname, extension) = os.path.splitext(args.file_bam)
     (filepath, filename) = os.path.split(pathname)
     if not os.path.isfile(args.file_bam+'.bai'):
-        print('There is no index file for the bam...')
-        print('Try to find Path to call samtools in the environment variable...')
-        if os.system("which samtools") == 0:
-            print("create "+args.file_bam+" index...")
-            os.system("samtools index "+args.file_bam)
-            print("Index creation complete ")
+        print('Creating the index file of bam...')
+        if os.system('which samtools') == 0:
+            os.system('samtools index '+args.file_bam)
         else:
-            print("please check your envionment variables abount samtools...")
+            print('Failed, please check your environment variables...')
+            return
     print('Processing the reference...')
     ref_raw = pd.read_table(args.file_ref, comment='#', header=None, dtype={0:str})
     ref_raw.columns = ['seq_id', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase', 'attributes']
@@ -91,14 +89,13 @@ def bedScan(args):
         return
     chr_list = sorted(list(set(chr_list).difference(set(args.chr_filter.split(',')))), key=functools.cmp_to_key(chr_cmp))
     chr_list_frag = [x for x in chr_list if re.match(r'.*[Mm]+,*', x) == None]
-    ref = ref_raw[(ref_raw['type'] == type_test) & (ref_raw['strand'] != '-') & ref_raw['seq_id'].str.match('^'+chr_list_frag[0]+'$') & (ref_raw['start'] > 1000)]
-    for term in chr_list_frag[1:]:
-        ##FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
-        ref = ref.append(ref_raw[(ref_raw['type'] == type_test) & (ref_raw['strand'] != '-') & ref_raw['seq_id'].str.match('^'+term+'$') & (ref_raw['start'] > 1000)])
+    ref = pd.DataFrame()
+    for term in chr_list_frag:
+        ref = pd.concat([ref, ref_raw[(ref_raw['type'] == type_test) & (ref_raw['strand'] != '-') & ref_raw['seq_id'].str.match('^'+term+'$') & (ref_raw['start'] > args.widthtss+100)]])
     ref = ref[['seq_id', 'strand', 'start', 'end']].sort_values(by=['seq_id', 'start', 'strand'])
     ref = ref.drop_duplicates(subset=['seq_id', 'start', 'strand'], keep='first')
-    ref.loc[ref['strand'] == '+', 'start'] -= 1000
-    ref.loc[ref['strand'] == '+', 'end'] = ref.loc[ref['strand'] == '+', 'start'] + 2000
+    ref.loc[ref['strand'] == '+', 'start'] -= args.widthtss+100
+    ref.loc[ref['strand'] == '+', 'end'] = ref.loc[ref['strand'] == '+', 'start'] + (args.widthtss+100)*2
     ref.index = list(range(ref.index.size))
  
     print('Scaning the distribution of fragments...')
@@ -118,23 +115,24 @@ def bedScan(args):
     print('Scaning the fragments around TSSs...')
     dist_count = []
     dist_count_group = {}
+    tss_range = (args.widthtss+100)*2+1
     for index, row in ref.iterrows():
-        count = np.zeros(args.widthtss*2+1, dtype=np.int64)
+        count = np.zeros(tss_range, dtype=np.int64)
         for frag in fs.fetch(row['seq_id'], row['start'], row['end']):
             if args.calc_mode == 'F':
                 if (frag.flag & 65) == 65 and (frag.flag & 1808) == 0 and frag.mapq > args.quality and frag.isize > 0 and frag.isize < args.isize:
-                    count[range(max(0, frag.pos - row['start']), min(args.widthtss*2+1, frag.pos + frag.isize - row['start']))] += 1
+                    count[range(max(0, frag.pos - row['start']), min(tss_range, frag.pos + frag.isize - row['start']))] += 1
             else:
                 if (frag.flag & 65) == 65 and (frag.flag & 1808) == 0 and frag.mapq > args.quality and frag.isize > 0:
                     count[max(0, frag.pos - row['start'])] += 1
-                    count[min(args.widthtss*2+1, frag.pos + frag.isize - row['start']) - 1] += 1
+                    count[min(tss_range, frag.pos + frag.isize - row['start']) - 1] += 1
         if sum(count) > 0:
             dist_count.append(count)
     dist_count = np.array(dist_count)
     if dist_count.size > 0:
-        factors = np.mean(dist_count[:, list(range(0,100))+list(range(args.widthtss*2-99,args.widthtss*2+1))], axis=1)
+        factors = np.mean(dist_count[:, list(range(0, 100))+list(range(tss_range-100, tss_range))], axis=1)
         factors[factors == 0] = np.mean(factors) if np.mean(factors) > 0 else 1
-        dist_count = pd.DataFrame({'V1': list(range(-args.widthtss,args.widthtss+1)), 'V2': list(np.mean(dist_count[:, 0:args.widthtss*2+1] / factors.reshape(len(factors), 1), axis=0))})
+        dist_count = pd.DataFrame({'V1': list(range(-args.widthtss, args.widthtss+1)), 'V2': list(np.mean(dist_count[:, 100:(tss_range-100)] / factors.reshape(len(factors), 1), axis=0))})
     
     print('Saving the results...')
     if args.file_out:
@@ -162,9 +160,19 @@ def bedScan(args):
             theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), axis_text=element_text(colour='black')), 
             width=6, height=6, dpi=200, filename=pathname+'.tmpb.png', limitsize=False, verbose=False)
     if 'c' in pic_list:
+        break_length = 50
+        if args.widthtss > 6000:
+            break_length = 2000
+        if args.widthtss > 3000:
+            break_length = 1000
+        elif args.widthtss > 1000:
+            break_length = 500
+        elif args.widthtss > 400:
+            break_length = 200
+        break_range = max(1, args.widthtss//break_length)*break_length
         ggsave(plot=ggplot(dist_count, aes(x='V1', y='V2'))+geom_line(size=1, colour='#80B1D3')+
             labs(x='\nDistance from TSS (bp)', y='Mean TSS enrichment score')+
-            scale_x_continuous(breaks=range(-args.widthtss, args.widthtss+1, 500))+
+            scale_x_continuous(breaks=range(-break_range, break_range+1, break_length))+
             theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour='black'), axis_text=element_text(colour='black')), 
             width=6, height=6, dpi=200, filename=pathname+'.tmpc.png', limitsize=False, verbose=False)
     width = 0
@@ -201,7 +209,7 @@ def main():
         +'-n, --nl [0-X]\tThe length limit of chromosome names (default: 10, 0 is no limit)\n'\
         +'-p, --pic [a,b,c]\tThe list of images would be shown (default: all)\n'\
         +'-f, --filter [aaa,bbb]\tThe list of chromosomes which should be filtered (default: none)\n'\
-        +'-w, --widthtss [100-10000]\tThe regions around the TSS that needs to be calculated (default: 900)\n'
+        +'-w, --widthtss [100-10000]\tThe width of regions around the TSS (default: 900)\n'
     for opt, arg in opts:
         if opt in ('-h', '--help'):
             help_flag = True
@@ -235,7 +243,6 @@ def main():
     print('ATACFragQC - Version: '+__version__)
     if help_flag or arguments.file_bam == '' or arguments.file_ref == '':
         print(help_info)
-        print("error! please check your input according to the software help info...")
         sys.exit()
     bedScan(arguments)
 
