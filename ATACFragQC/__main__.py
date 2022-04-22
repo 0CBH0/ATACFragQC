@@ -10,6 +10,7 @@ class ArgumentList:
     file_bam = ""
     file_ref = ""
     file_out = False
+    delmt = False
     group_marker = ""
     quality = 5
     isize = 147
@@ -23,6 +24,7 @@ class ArgumentList:
         self.file_bam = ""
         self.file_ref = ""
         self.file_out = False
+        self.delmt = False
         self.group_marker = ""
         self.quality = 5
         self.isize = 147
@@ -101,7 +103,8 @@ def bedScan(args):
     print("Scaning the distribution of fragments...")
     chr_count = {}
     len_count = [0] * 501
-    for chr in chr_list_frag:
+    chr_dist = chr_list_frag if delmt else chr_list
+    for chr in chr_dist:
         count = 0
         for read in fs.fetch(chr):
             if (read.flag & 65) == 65 and (read.flag & 784) == 0 and read.mapq > args.quality and read.isize > 0 and read.isize < 501:
@@ -110,7 +113,7 @@ def bedScan(args):
         chr_count[chr] = count
     len_count = pd.DataFrame({"V1": list(range(1, 501)), "V2": len_count[1:]})
     chr_count = pd.DataFrame({"V1": list(chr_count.keys()), "V2": list(chr_count.values())})
-    chr_count["V1"] = pd.Categorical(chr_count["V1"], categories=chr_list_frag, ordered=True)
+    chr_count["V1"] = pd.Categorical(chr_count["V1"], categories=chr_dist, ordered=True)
     
     print("Scaning the fragments around TSSs...")
     dist_count = []
@@ -192,7 +195,7 @@ def bedScan(args):
 
 def main():
     opts, args = getopt.getopt(sys.argv[1:], 
-        "hoi:r:g:m:q:l:f:c:p:n:w:", 
+        "hodi:r:g:m:q:l:f:c:p:n:w:", 
         ["help", "output", "input=", "reference=", "group=", "mode=", "quality=", "length=", "filter=", "chr=", "pic=", "nl=","widthtss="])
     arguments = ArgumentList()
     help_flag = False
@@ -209,7 +212,8 @@ def main():
         +"-n, --nl [0-X]\tThe length limit of chromosome names (default: 10, 0 is no limit)\n"\
         +"-p, --pic [a,b,c]\tThe list of images would be shown (default: all)\n"\
         +"-f, --filter [aaa,bbb]\tThe list of chromosomes which should be filtered (default: none)\n"\
-        +"-w, --widthtss [100-10000]\tThe width of regions around the TSS (default: 900)\n"
+        +"-w, --widthtss [100-10000]\tThe width of regions around the TSS (default: 900)\n"\
+        +"-d, --delmt\tRemove mtDNA in fragment distribution (default: False)\n"
     for opt, arg in opts:
         if opt in ("-h", "--help"):
             help_flag = True
@@ -221,6 +225,8 @@ def main():
             arguments.group_marker = arg
         elif opt in ("-o", "--output"):
             arguments.file_out = True
+        elif opt in ("-d", "--delmt"):
+            arguments.delmt = True
         elif opt in ("-q", "--quality"):
             if int(arg) >= 1 and int(arg) <= 255:
                 arguments.quality = int(arg)
