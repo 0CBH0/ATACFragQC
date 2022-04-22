@@ -103,7 +103,7 @@ def bedScan(args):
     print("Scaning the distribution of fragments...")
     chr_count = {}
     len_count = [0] * 501
-    chr_dist = chr_list_frag if delmt else chr_list
+    chr_dist = chr_list_frag if args.delmt else chr_list
     for chr in chr_dist:
         count = 0
         for read in fs.fetch(chr):
