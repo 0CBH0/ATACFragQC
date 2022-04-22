@@ -101,7 +101,7 @@ def bedScan(args):
     print("Scaning the distribution of fragments...")
     chr_count = {}
     len_count = [0] * 501
-    for chr in chr_list:
+    for chr in chr_list_frag:
         count = 0
         for read in fs.fetch(chr):
             if (read.flag & 65) == 65 and (read.flag & 784) == 0 and read.mapq > args.quality and read.isize > 0 and read.isize < 501:
@@ -110,7 +110,7 @@ def bedScan(args):
         chr_count[chr] = count
     len_count = pd.DataFrame({"V1": list(range(1, 501)), "V2": len_count[1:]})
     chr_count = pd.DataFrame({"V1": list(chr_count.keys()), "V2": list(chr_count.values())})
-    chr_count["V1"] = pd.Categorical(chr_count["V1"], categories=chr_list, ordered=True)
+    chr_count["V1"] = pd.Categorical(chr_count["V1"], categories=chr_list_frag, ordered=True)
     
     print("Scaning the fragments around TSSs...")
     dist_count = []
