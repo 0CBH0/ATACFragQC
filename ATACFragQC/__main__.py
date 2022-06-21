@@ -112,7 +112,7 @@ def bedScan(args):
     for chr in chr_dist:
         count = 0
         for read in fs.fetch(chr):
-            if (read.flag & 65) == 65 and (read.flag & 784) == 0 and read.mapq > args.quality and read.isize > 0 and read.isize < 501:
+            if (read.flag & 3) == 3 and (read.flag & 784) == 0 and read.mapq > args.quality and read.isize > 0 and read.isize < 501:
                 len_count[read.isize] += 1
                 count += 1
         chr_count[chr] = count
@@ -128,10 +128,10 @@ def bedScan(args):
         count = np.zeros(tss_range, dtype=np.int64)
         for frag in fs.fetch(row["seq_id"], row["start"], row["end"]):
             if args.calc_mode == "F":
-                if (frag.flag & 65) == 65 and (frag.flag & 1808) == 0 and frag.mapq > args.quality and frag.isize > 0 and frag.isize < args.isize:
+                if (frag.flag & 3) == 3 and (frag.flag & 1808) == 0 and frag.mapq > args.quality and frag.isize > 0 and frag.isize < args.isize:
                     count[range(max(0, frag.pos - row["start"]), min(tss_range, frag.pos + frag.isize - row["start"]))] += 1
             else:
-                if (frag.flag & 65) == 65 and (frag.flag & 1808) == 0 and frag.mapq > args.quality and frag.isize > 0:
+                if (frag.flag & 3) == 3 and (frag.flag & 1808) == 0 and frag.mapq > args.quality and frag.isize > 0:
                     count[max(0, frag.pos - row["start"])] += 1
                     count[min(tss_range, frag.pos + frag.isize - row["start"]) - 1] += 1
         if sum(count) > 0:
