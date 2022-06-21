@@ -158,13 +158,13 @@ def bedScan(args):
         return
     if "a" in pic_list:
         ggsave(plot=ggplot(chr_count, aes(x="V1", y="V2"))+geom_bar(stat="identity", width=0.8, fill="#80B1D3")+
-            labs(x="Chromosome", y="Fragments")+
+            labs(x="Chromosome", y="Fragments")+scale_y_continuous(expand=(0, 0))+
             theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour="black"), 
             axis_text_y=element_text(colour="black"), axis_text_x=element_text(angle=270, hjust=0.3, vjust=1, colour="black")), 
             width=4, height=6, dpi=200, filename=pathname+".tmpa.png", limitsize=False, verbose=False)
     if "b" in pic_list:
         ggsave(plot=ggplot(len_count, aes(x="V1", y="V2"))+geom_bar(stat="identity", colour="#80B1D3", fill="#80B1D3")+
-            labs(x="\nInsert Size", y="Fragments")+
+            labs(x="\nInsert Size", y="Fragments")+scale_y_continuous(expand=(0, 0))+
             theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour="black"), axis_text=element_text(colour="black")), 
             width=6, height=6, dpi=200, filename=pathname+".tmpb.png", limitsize=False, verbose=False)
     if "c" in pic_list:
@@ -179,7 +179,7 @@ def bedScan(args):
             break_length = 200
         break_range = max(1, args.widthtss//break_length)*break_length
         ggsave(plot=ggplot(dist_count, aes(x="V1", y="V2"))+geom_line(size=1, colour="#80B1D3")+
-            labs(x="\nDistance from TSS (bp)", y="Mean TSS enrichment score")+
+            labs(x="\nDistance from TSS (bp)", y="Mean TSS enrichment score")+scale_y_continuous(expand=(0, 0))+
             scale_x_continuous(breaks=range(-break_range, break_range+1, break_length))+
             theme(plot_title=element_blank(), panel_background=element_blank(), axis_line=element_line(colour="black"), axis_text=element_text(colour="black")), 
             width=6, height=6, dpi=200, filename=pathname+".tmpc.png", limitsize=False, verbose=False)
