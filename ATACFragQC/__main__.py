@@ -130,10 +130,20 @@ def bedScan(args):
             if args.calc_mode == "F":
                 if (frag.flag & 3) == 3 and (frag.flag & 1812) == 0 and frag.mapq > args.quality and frag.isize > 0 and frag.isize < args.isize:
                     count[range(max(0, frag.pos - row["start"]), min(tss_range, frag.pos + frag.isize - row["start"]))] += 1
-            else:
+            elif args.calc_mode == "C":
                 if (frag.flag & 3) == 3 and (frag.flag & 1812) == 0 and frag.mapq > args.quality and frag.isize > 0:
                     count[max(0, frag.pos - row["start"])] += 1
                     count[min(tss_range, frag.pos + frag.isize - row["start"]) - 1] += 1
+            elif args.calc_mode == "M":
+                if (frag.flag & 3) == 3 and (frag.flag & 1812) == 0 and frag.mapq > args.quality and frag.isize > 0:
+                    if length(frag.isize % 2 == 1):
+                        count[frag.pos + (frag.isize - 1)/2 - row["start"]] += 1
+                    else:
+                        count[frag.pos + frag.isize/2 - row["start"]] += 1
+                        count[frag.pos + frag.isize/2 - 1 - row["start"]] += 1
+            else:
+                if (frag.flag & 3) == 3 and (frag.flag & 1812) == 0 and frag.mapq > args.quality and frag.isize > 0 and frag.isize < args.isize:
+                    count[range(max(0, frag.pos - row["start"]), min(tss_range, frag.pos + frag.isize - row["start"]))] += 1
         if sum(count) > 0:
             dist_count.append(count)
     dist_count = np.array(dist_count)
@@ -211,7 +221,7 @@ def main():
         +"-g, --group [marker]\tThe TSS of each group would be calculated if -g was set\n"\
         +"-s, --save <name>\tThe name of results (default: same as the bam)\n"\
         +"-o, --output [T/F]\tThe table of results would be saved if -o was set (default: False)\n"\
-        +"-m, --mode [F/C]\tThe TSS enrichment would be calculated by fragments (F) or cutsites(C) (default: F)\n"\
+        +"-m, --mode [F/C/M]\tThe TSS enrichment would be calculated by fragments (F), cutsites(C) or midsites(M) (default: F)\n"\
         +"-q, --quality [1-255]\tThe quality limit of alignment (default: 5)\n"\
         +"-l, --length [50-500]\tThe length limit of nucleosome-free fragment (default: 147)\n"\
         +"-c, --chr [aaa,bbb]\tThe list of chromosomes would be used (default: all)\n"\
