@@ -54,10 +54,10 @@ def chr_cmp(a, b):
     return la - lb
 
 def bedScan(args):
-    (pathname, extension) = os.path.splitext(file_bam)
+    (pathname, extension) = os.path.splitext(args.file_bam)
     (filepath, filename) = os.path.split(pathname)
     if args.file_name != "":
-        (filepath_fix, filename_fix) = os.path.split(file_name)
+        (filepath_fix, filename_fix) = os.path.split(args.file_name)
         if filepath_fix != "":
             filepath = filepath_fix
         if filename_fix != "":
