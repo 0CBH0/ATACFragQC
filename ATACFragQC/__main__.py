@@ -57,9 +57,11 @@ def bedScan(args):
     (pathname, extension) = os.path.splitext(args.file_bam)
     (filepath, filename) = os.path.split(pathname)
     if args.file_name != "":
-        (filepath_fix, filename) = os.path.split(args.file_name)
+        (filepath_fix, filename_fix) = os.path.split(args.file_name)
         if filepath_fix != "":
             filepath = filepath_fix
+        if filename_fix != "":
+            file_name = filename_fix
     pathname = os.path.join(filepath, filename)
     if not os.path.isfile(args.file_bam+".bai"):
         print("Creating the index file of bam...")
