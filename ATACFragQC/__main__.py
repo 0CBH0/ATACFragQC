@@ -136,10 +136,8 @@ def bedScan(args):
                     count[range(max(0, frag.pos - row["start"]), min(tss_range, frag.pos + frag.isize - row["start"]))] += 1
             elif args.calc_mode == "C":
                 if (frag.flag & 3) == 3 and (frag.flag & 1812) == 0 and frag.mapq > args.quality and frag.isize > 0:
-                    if frag.pos - row["start"] >= 0:
-                        count[frag.pos - row["start"]] += 1
-                    if frag.pos + frag.isize - row["start"] <= tss_range:
-                        count[frag.pos + frag.isize - row["start"] - 1] += 1
+                    count[max(0, frag.pos - row["start"])] += 1
+                    count[min(tss_range, frag.pos + frag.isize - row["start"]) - 1] += 1
             elif args.calc_mode == "M":
                 if (frag.flag & 3) == 3 and (frag.flag & 1812) == 0 and frag.mapq > args.quality and frag.isize > 0:
                     if length(frag.isize % 2 == 1):
