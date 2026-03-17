@@ -4,7 +4,8 @@ from __future__ import absolute_import
 
 import os.path
 from setuptools import setup
-from ATACFragQC import __version__
+
+__version__ = open(os.path.join("ATACFragQC", "__init__.py"), "r").read().split('"')[-2]
 
 # The directory containing this file
 HERE = os.path.abspath(os.path.dirname(__file__))
